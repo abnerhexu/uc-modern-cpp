@@ -137,7 +137,7 @@ public:
     void alloc_out() {
         auto data_a = dynamic_cast<Parameter*>(this->parents[0]);
         auto data_b = dynamic_cast<Parameter*>(this->parents[1]);
-        this->out = new Parameter({data_a->shape[0], data_b->shape[1]}, true);
+        this->out = new Parameter({data_a->shape[1], data_b->shape[1]}, true);
     }
     void forward() {
         auto data_a = dynamic_cast<Parameter*>(this->parents[0]);
@@ -163,7 +163,67 @@ public:
         auto gb = new Parameter({gradient->shape[1], input1->shape[1]}, true);
         mma(gradient->data, input2->data, ga->data, gradient->shape[0], input2->shape[1], gradient->shape[1]);
         mma(transpose(gradient->data, gradient->shape[0], gradient->shape[1]), input1->data, gb->data, gradient->shape[1], input1->shape[1], gradient->shape[0]);
+        return std::make_tuple(ga, gb);
     }
 }; // class DotProduct
 
-}  // namespace nn
+class Linear: public FunctionNode {
+public:
+    Linear(Node* features, Node* weights): FunctionNode(features, weights) {}
+    void alloc_out() {
+        auto features = dynamic_cast<Parameter*>(this->parents[0]);
+        auto weights = dynamic_cast<Parameter*>(this->parents[1]);
+        this->out = new Parameter({features->shape[0], weights->shape[1]}, true);
+    }
+    void forward() {
+        auto features = dynamic_cast<Parameter*>(this->parents[0]);
+        auto weights = dynamic_cast<Parameter*>(this->parents[1]);
+        if (features->shape[1] != weights->shape[0]) {
+            throw std::runtime_error("Linear: data size mismatch");
+        }
+        mma(features->data, weights->data, this->out->data, features->shape[0], weights->shape[1], weights->shape[0]);
+    }
+    std::tuple<Parameter*, Parameter*> backward(std::vector<Parameter*> payload) {
+        auto gradient = payload[0];
+        auto input1 = payload[1];
+        auto input2 = payload[2];
+        if (gradient->shape[0] != input1->shape[0]) {
+            throw std::runtime_error("Linear: gradient size mismatch");
+        }
+        if (gradient->shape[1] != input2->shape[1]) {
+            throw std::runtime_error("Linear: gradient shape[1] should be input2 shape[1]");
+        }
+        auto ga = new Parameter({gradient->shape[0], input2->shape[0]}, true);
+        auto gb = new Parameter({input1->shape[1], gradient->shape[1]}, true);
+        mma(gradient->data, transpose(input2->data, input2->shape[0], input2->shape[1]), ga->data, gradient->shape[0], input2->shape[0], gradient->shape[1]);
+        mma(transpose(input1->data, input1->shape[0], input1->shape[1]), gradient->data, gb->data, input1->shape[1], gradient->shape[1], input1->shape[0]);
+        return std::make_tuple(ga, gb);
+    }
+}; // class Linear
+
+class ReLU: public FunctionNode {
+public:
+    ReLU(Node* input): FunctionNode(input) {}
+    void alloc_out() {
+        auto input = dynamic_cast<Parameter*>(this->parents[0]);
+        this->out = new Parameter(input->shape, true);
+    }
+    void forward() {
+        auto input = dynamic_cast<Parameter*>(this->parents[0]);
+        for (auto i = 0; i < input->size; i++) {
+            this->out->data[i] = std::max(input->data[i], 0.0f);
+        }
+    }
+    std::tuple<Parameter*> backward(std::vector<Parameter*> payload) {
+        auto gradient = payload[0];
+        auto input = payload[1];
+        auto g = new Parameter(gradient->shape, true);
+        for (auto i = 0; i < gradient->size; i++) {
+            g->data[i] = gradient->data[i] * (input->data[i] > 0.0f ? 1.0f : 0.0f);
+        }
+        return std::make_tuple(g);
+    }
+}; // class relu
+
+
+} // namespace nn
