@@ -26,3 +26,25 @@ std::vector<T> generate_random_array(size_t size, T min, T max) {
 
     return result;
 }
+
+template<typename T>
+void mma(std::vector<T> a, std::vector<T> b, std::vector<T> c, size_t M, size_t N, size_t K) {
+    for (size_t i = 0; i < M; ++i) {
+        for (size_t j = 0; j < N; ++j) {
+            for (size_t k = 0; k < K; ++k) {
+                c[i * N + j] += a[i * K + k] * b[k * N + j];
+            }
+        }
+    }
+}
+
+template<typename T>
+std::vector<T> transpose(std::vector<T> a, size_t M, size_t N) {
+    std::vector<T> b = std::vector<T>(M * N);
+    for (size_t i = 0; i < M; ++i) {
+        for (size_t j = 0; j < N; ++j) {
+            b[j * M + i] = a[i * N + j];
+        }
+    }
+    return b;
+}

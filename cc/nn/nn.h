@@ -1,28 +1,30 @@
 #include <pybind11/pybind11.h>
-#include <vector>
 #include <pybind11/stl.h>
 #include <numeric>
-#include "function/data.h"
+#include <vector>
+#include "function/function.h"
 
 namespace nn {
 
 class Node {
-public:
+   public:
     Node() {}
     virtual ~Node() {}
-}; // class Node
+};  // class Node
 
-class DataNode: public Node {
-public:
+class DataNode : public Node {
+   public:
     std::vector<float> data;
     std::vector<Node*> parents;
-public:
-    DataNode(std::vector<float> data): data(data) {}
+
+   public:
+    DataNode(std::vector<float> data)
+        : data(data) {}
     std::vector<float> forward(std::vector<float>& x);
     std::vector<float> backward(std::vector<float>& gradient, std::vector<float>& x);
-}; // class DataNode
+};  // class DataNode
 
-class Constant: public DataNode {
+class Constant : public DataNode {
     /*
     A Constant node is used to represent:
     * Input features
@@ -31,16 +33,19 @@ class Constant: public DataNode {
     You should not need to construct any Constant nodes directly; they will
     instead be provided by either the dataset or when you call `nn.gradients`.
     */
-public:
-    Constant(std::vector<float> data): DataNode(data) {}
-}; // class Constant
+   public:
+    Constant(std::vector<float> data)
+        : DataNode(data) {}
+};  // class Constant
 
-class Parameter: public DataNode {
-public:
+class Parameter : public DataNode {
+   public:
     std::vector<size_t> shape;
     size_t size = 0;
-public:
-    Parameter(const std::vector<size_t> shape): shape(shape), DataNode(generate_random_array<float>(this->size, -1.0, 1.0)){
+
+   public:
+    Parameter(const std::vector<size_t> shape, bool zero_filling = false)
+        : shape(shape), DataNode({}) {
         if (this->shape.size() != 2) {
             throw std::runtime_error("Parameter shape must be a tuple of 2 integers");
         }
@@ -51,22 +56,114 @@ public:
             throw std::runtime_error("Parameter shape must be a tuple of positive integers");
         }
         this->size = std::accumulate(this->shape.begin(), this->shape.end(), 1, std::multiplies<int>());
+        if (!zero_filling) {
+            this->data = generate_random_array<float>(this->size, -1.0, 1.0);
+        } else {
+            this->data = std::vector<float>(this->size, 0.0);
+        }
     }
-    void update(Node* direction, float learning_rate);
-}; // class Parameter
 
-class FunctionNode: public Node {
-public:
+    void update(Node* direction, float learning_rate);
+};  // class Parameter
+
+class FunctionNode : public Node {
+   public:
     std::vector<Node*> parents;
-public:
-    FunctionNode(){}
+    Parameter* out;
+    Parameter* back;
+
+   public:
+    FunctionNode() {}
     template <typename... Args>
     FunctionNode(Args... args) {
         // 将参数包展开并存入 vector
         (this->parents.push_back(args), ...);
+        this->alloc_out();
         this->forward();
     }
     virtual void forward() = 0;
-};
+    virtual void alloc_out() = 0;
+};  // class FunctionNode
 
-}
+class Add : public FunctionNode {
+    /*
+    Add matrices element-wise
+    */
+   public:
+    Add(Node* a, Node* b)
+        : FunctionNode(a, b) {}
+
+    void forward() {
+        auto data_a = dynamic_cast<Parameter*>(this->parents[0]);
+        auto data_b = dynamic_cast<Parameter*>(this->parents[1]);
+        if (data_a->data.size() != data_b->data.size()) {
+            throw std::runtime_error("Add: data size mismatch");
+        }
+        for (int row = 0; row < data_a->shape[0]; row++) {
+            for (int col = 0; col < data_a->shape[1]; col++) {
+                this->out->data[row * data_a->shape[1] + col] = data_a->data[row * data_a->shape[1] + col] + data_b->data[row * data_b->shape[1] + col];
+            }
+        }
+    };
+
+    void alloc_out() {
+        auto data_a = dynamic_cast<Parameter*>(this->parents[0]);
+        this->out = new Parameter(data_a->shape, true);
+    }
+
+    std::tuple<Parameter*, Parameter*> backward(std::vector<Parameter*> payload) {
+        // the first is gradient
+        // the second is input
+        auto gradient = payload[0];
+        auto input = payload[1];
+        if (gradient->shape != input->shape) {
+            throw std::runtime_error("Add: gradient size mismatch");
+        }
+        auto ga = gradient;
+        auto gb = new Parameter({gradient->shape[1], 1}, true);
+        for (auto col = 0; col < gradient->shape[1]; col++) {
+            float psum = 0.0f;
+            for (auto row = 0; row < gradient->shape[0]; row++) {
+                psum += gradient->data[row * gradient->shape[1] + col];
+            }
+            gb->data[col] = psum;
+        }
+    }
+};  // class Add
+
+class DotProduct: public FunctionNode {
+public:
+    DotProduct(Node* features, Node* weights): FunctionNode(features, weights) {}
+    void alloc_out() {
+        auto data_a = dynamic_cast<Parameter*>(this->parents[0]);
+        auto data_b = dynamic_cast<Parameter*>(this->parents[1]);
+        this->out = new Parameter({data_a->shape[0], data_b->shape[1]}, true);
+    }
+    void forward() {
+        auto data_a = dynamic_cast<Parameter*>(this->parents[0]);
+        auto data_b = dynamic_cast<Parameter*>(this->parents[1]);
+        if (data_a->shape[1] != data_b->shape[0]) {
+            throw std::runtime_error("DotProduct: data size mismatch");
+        } else if (data_a->shape[0] != data_b->shape[1]) {
+            throw std::runtime_error("DotProduct: data size mismatch");
+        }
+        mma(data_a->data, transpose(data_b->data, data_b->shape[0], data_b->shape[1]), this->out->data, data_a->shape[0], data_b->shape[0], data_a->shape[1]);
+    }
+    std::tuple<Parameter*, Parameter*> backward(std::vector<Parameter*> payload) {
+        auto gradient = payload[0];
+        auto input1 = payload[1];
+        auto input2 = payload[2];
+        if (gradient->shape[0] != input1->shape[0]) {
+            throw std::runtime_error("DotProduct: gradient size mismatch");
+        }
+        if (gradient->shape[1] != 1) {
+            throw std::runtime_error("DotProduct: gradient shape[1] should be 1");
+        }
+        auto ga = new Parameter({gradient->shape[0], input2->shape[1]}, true);
+        auto gb = new Parameter({gradient->shape[1], input1->shape[1]}, true);
+        mma(gradient->data, input2->data, ga->data, gradient->shape[0], input2->shape[1], gradient->shape[1]);
+        mma(transpose(gradient->data, gradient->shape[0], gradient->shape[1]), input1->data, gb->data, gradient->shape[1], input1->shape[1], gradient->shape[0]);
+    }
+}; // class DotProduct
+
+}  // namespace nn
