@@ -225,5 +225,38 @@ public:
     }
 }; // class relu
 
+class SquareLoss: public FunctionNode {
+public:
+    SquareLoss(Node* inputs): FunctionNode(inputs) {}
+    void alloc_out() {
+        auto input = dynamic_cast<Parameter*>(this->parents[0]);
+        this->out = new Parameter({1}, true);
+    }
+    void forward() {
+        auto input1 = dynamic_cast<Parameter*>(this->parents[0]);
+        auto input2 = dynamic_cast<Parameter*>(this->parents[1]);
+        if (input1->shape != input2->shape) {
+            throw std::runtime_error("SquareLoss: input size mismatch");
+        }
+        for (auto i = 0; i < input1->size; i++) {
+            this->out->data[0] += (input1->data[i] - input2->data[i]) * (input1->data[i] - input2->data[i]) / 2.0;
+        }
+        this->out->data[0] = this->out->data[0] / input1->size;
+    }
+    std::tuple<Parameter*, Parameter*> backward(std::vector<Parameter*> payload) {
+        auto gradient = payload[0];
+        auto input1 = payload[1];
+        auto input2 = payload[2];
+        auto ga = new Parameter(input1->shape, true);
+        auto gb = new Parameter(input2->shape, true);
+        for (auto i = 0; i < input1->size; i++) {
+            ga->data[i] = gradient->data[0] * (input1->data[i] - input2->data[i]) / input1->size;
+            gb->data[i] = gradient->data[0] * (input2->data[i] - input1->data[i]) / input1->size;
+        }
+        return std::make_tuple(ga, gb);
+    }
+}; // class SquareLoss
+
+
 
 } // namespace nn
