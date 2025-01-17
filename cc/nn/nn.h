@@ -229,7 +229,6 @@ class SquareLoss: public FunctionNode {
 public:
     SquareLoss(Node* inputs): FunctionNode(inputs) {}
     void alloc_out() {
-        auto input = dynamic_cast<Parameter*>(this->parents[0]);
         this->out = new Parameter({1}, true);
     }
     void forward() {
@@ -257,6 +256,20 @@ public:
     }
 }; // class SquareLoss
 
-
+class SoftmaxLoss: public FunctionNode {
+public:
+    SoftmaxLoss(Node* inputs): FunctionNode(inputs) {}
+    void alloc_out() {
+        this->out = new Parameter({1}, true);
+    }
+    void forward() {
+        auto input = dynamic_cast<Parameter*>(this->parents[0]);
+        auto target = dynamic_cast<Parameter*>(this->parents[1]);
+        if (input->shape != target->shape) {
+            throw std::runtime_error("SoftmaxLoss: input size mismatch");
+        }
+        
+    }
+}; // class SoftmaxLoss
 
 } // namespace nn
