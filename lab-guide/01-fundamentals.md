@@ -4,7 +4,7 @@
 
 在这一部分中，我们将完成基本的四则运算和由它们组合而成的初等函数的构建。你需要在cc/operators中补全`ops.h`和`ops.cc`的内容。
 
-在`ops.h`中，你需要补全以下函数的实现：
+**[TASK 1]** 在`ops.h`中，你需要补全以下函数的实现：
 
 - `mul`函数，输入为两个数`a`、`b`，输出为它们的乘积。
 
@@ -28,7 +28,7 @@
 
 另外，你应当还注意到了我们为这两个文件提供了名叫`operators`的命名空间（namespace）。主要是为了防止不同命名空间中的重名冲突。
 
-在`ops.cc`中，你需要完成以下函数的实现：
+**[TASK 2]** 在`ops.cc`中，你需要完成以下函数的实现：
 
 - `is_close`函数，输入为两个数`x`、`y`，输出为`(float)(abs(x - y) < epsilon)`。
 
@@ -50,3 +50,43 @@ $$
 
 - `relu_back`函数，输入为`x`和`d`，输出为`x > 0.0 ? d*1.0 : 0.0`。
 
+#### 函数式编程基础
+
+实现`map`、`zipWith`和`reduce`。
+
+`map`接受一个`std::vector`和一个函数作为输入，返回一个新的`std::vector`，其中每个元素都是输入函数应用于输入`std::vector`中对应元素的结果。具体来说，对于下面这个实现：
+
+```cpp
+template<typename T, typename F>
+auto map(const std::vector<T>& vec, F func) -> std::vector<decltype(func(std::declval<T>()))> {
+
+    std::vector<decltype(func(std::declval<T>()))> result;
+    result.reserve(vec.size());
+
+    std::transform(vec.begin(), vec.end(), std::back_inserter(result), func);
+
+    return result;
+}
+```
+
+有几处可能让你感到疑惑的地方。
+
+首先，这里的函数返回值居然和Python一样被后置了！`->` 是 C++11 引入的尾置返回类型语法。它的作用是将函数的返回类型放在函数参数列表之后，而不是放在函数名之前。在某些情况下，返回类型可能依赖于函数参数或模板参数，而这些信息在函数名之前是不可用的。尾置返回类型允许我们在函数参数列表之后推导返回类型。
+
+> 例如，在`map`函数中，返回类型依赖于`func`的返回类型，而`func`的类型在函数名之前是未知的。使用尾置返回类型可以解决这个问题。
+
+其次，我们使用了`std::declval`。`std::declval`是 C++11 引入的一个工具，用于在编译时模拟一个对象的“假实例”，以便在不实际构造对象的情况下推导类型。
+
+```cpp
+decltype(func(std::declval<T>()))
+```
+
+> 在`map`函数中，我们需要推导`func`的返回类型。假设`func`是一个函数对象，接受`T`类型的参数并返回某种类型`R`，我们可以使用`std::declval`来模拟调用`func`的过程。
+
+**[TASK 3]** 在`ops.h`中，调用我们给出的`map`函数实现和你刚刚完成的`neg`函数，补全`negList`函数（大约需要1行代码）。
+
+**[TASK 4]** 在`ops.h`中，仿照`map`函数，补全`zipWith`函数（大约需要10行代码）。注意：在进行`zipWith`函数的实现时，你需要考虑输入的两个`std::vector`长度不一致的情况，对于这种情况，你简单地`throw`一个异常即可。
+
+**[TASK 5]** 在`ops.h`中，使用你实现的`zipWith`和`add`函数，实现`addLists`函数（大约需要1行代码）。
+
+**[TASK 6]** 实际上你会发现`std::accumulate`就能够承担`reduce`函数的功能，因此你可以直接使用`std::accumulate`来实现`reduce`函数。使用`reduce`函数实现`sumList`（将一个列表中的元素相加）和`prodList`（将一个列表中的元素相乘）函数（大约分别需要1行代码）。
