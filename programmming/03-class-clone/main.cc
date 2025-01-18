@@ -11,12 +11,10 @@ class Fibonacci {
 
 public:
     // TODO: 实现动态设置容量的构造器
-    Fibonacci(int capacity): {}
+    Fibonacci(int capacity) {}
 
     // TODO: 实现复制构造器
-    Fibonacci(Fibonacci const &other):  {
-        
-    }
+    Fibonacci(Fibonacci const &other) {}
 
     // TODO: 实现正确的缓存优化斐波那契计算
     size_t get(int i) {
