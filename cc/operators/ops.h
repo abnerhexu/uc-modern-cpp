@@ -1,4 +1,8 @@
 #include <cmath>
+#include <functional>
+#include <vector>
+#include <algorithm>
+
 namespace operators {
 
 template<typename T>
@@ -34,6 +38,56 @@ float eq(T a, T b) {
 template<typename T>
 T max(T a, T b) {
     return a > b ? a : b;
+}
+
+template<typename T, typename F>
+auto map(const std::vector<T>& vec, F func) -> std::vector<decltype(func(std::declval<T>()))> {
+
+    std::vector<decltype(func(std::declval<T>()))> result;
+    result.reserve(vec.size());
+
+    std::transform(vec.begin(), vec.end(), std::back_inserter(result), func);
+
+    return result;
+}
+
+auto negList(const std::vector<float>& vec) -> std::vector<float> {
+    return map(vec, neg<float>);
+}
+
+template <typename T1, typename T2, typename F>
+auto zipWith(const std::vector<T1>& vec1, const std::vector<T2>& vec2, F func)
+    -> std::vector<decltype(func(std::declval<T1>(), std::declval<T2>()))> {
+
+    if (vec1.size() != vec2.size()) {
+        throw std::invalid_argument("Vectors must have the same size");
+    }
+
+    std::vector<decltype(func(std::declval<T1>(), std::declval<T2>()))> result;
+    result.reserve(vec1.size());
+
+    for (size_t i = 0; i < vec1.size(); ++i) {
+        result.push_back(func(vec1[i], vec2[i]));
+    }
+
+    return result;
+}
+
+auto addLists(const std::vector<float>& vec1, const std::vector<float>& vec2) -> std::vector<float> {
+    return zipWith(vec1, vec2, add<float>);
+}
+
+template<typename T, typename F>
+auto reduce(const std::vector<T>& vec, F func) -> T {
+    return std::accumulate(vec.begin(), vec.end(), func);
+}
+
+auto sumList(const std::vector<float>& vec) -> float {
+    return reduce(vec, add<float>);
+}
+
+auto prodList(const std::vector<float>& vec) -> float {
+    return reduce(vec, mul<float>);
 }
 
 }
