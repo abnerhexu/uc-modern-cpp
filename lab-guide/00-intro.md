@@ -21,3 +21,16 @@ sudo apt update
 sudo apt install -y build-essential cmake git gcc g++
 ```
 
+#### 准备Python环境
+
+首先，你需要在Linux下具备Python环境。相信在《大学计算（上）》中，你已经具备这样的技能。我们以使用WSL+VSCode为例介绍环境配置的具体方案。
+
+在VSCode中连接WSL，打开对应目录。
+
+使用`conda`创建一个环境（或使用已有环境），然后执行
+
+```
+pip install pybind11
+```
+
+而后，通过`pip show pybind11`可以找到`pybind11`的安装路径，将对应的头文件路径添加到`.vscode/c_cpp_properties.json`的`includePath`中。
