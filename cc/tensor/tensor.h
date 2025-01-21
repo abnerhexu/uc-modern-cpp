@@ -1,6 +1,7 @@
 #include <numeric>
 #include <random>
 #include <vector>
+#include <memory>
 
 namespace tensor {
 
@@ -22,6 +23,7 @@ public:
             }
         }
     }
+    std::shared_ptr<Tensor> transpose();
     ~Tensor() = default;
 };  // class Tensor
 

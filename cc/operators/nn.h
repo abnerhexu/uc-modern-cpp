@@ -93,7 +93,20 @@ public:
         return data;
     }
 
-    
+    std::tuple<std::shared_ptr<Node>, std::shared_ptr<Node>> backward(std::shared_ptr<Node> gradient) override {
+        auto features = this->objects[0];
+        auto weights = this->objects[1];
+        // gradient.shape[0] == features.shape[0]
+        // gradient.shape[1] == weights.shape[1]
+        auto grad_features_shape = {gradient->data->shape[0], weights->data->shape[0]};
+        auto grad_features = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(grad_features_shape));
+        auto grad_weights_shape = {features->data->shape[1], gradient->data->shape[1]};
+        auto grad_weights = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(grad_weights_shape));
+        arith::mm(gradient->data->data, weights->data->transpose()->data, grad_features->data->data, gradient->data->shape[0], gradient->data->shape[1], weights->data->shape[0]);
+        arith::mm(features->data->transpose()->data, gradient->data->data, grad_weights->data->data, features->data->shape[1], features->data->shape[0], gradient->data->shape[1]);
+    }
 }; //class Linear
+
+
 
 }
