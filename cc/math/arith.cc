@@ -10,4 +10,5 @@ float mean(const std::vector<int>& x) {
     return std::accumulate(x.begin(), x.end(), 0) / x.size();
 }
 
+
 }

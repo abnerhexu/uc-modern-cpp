@@ -10,7 +10,7 @@ public:
     std::shared_ptr<tensor::Tensor> data;
 public:
     Node() {}
-    virtual std::shared_ptr<tensor::Tensor> forward() = 0;
+    virtual std::shared_ptr<Node> forward() = 0;
     virtual std::tuple<std::shared_ptr<Node>, std::shared_ptr<Node>> backward(std::shared_ptr<Node> gradient) = 0;
     virtual void update(std::shared_ptr<tensor::Tensor> grad, float lr) = 0;
     virtual void zero_grad() = 0;
@@ -52,7 +52,6 @@ public:
             std::shared_ptr<std::remove_pointer_t<std::decay_t<Args>>>(args...)
         )
         ...};
-        this->data = this->forward();
     }
 
 }; //class FunctionNode
@@ -60,14 +59,14 @@ public:
 class Add: public FunctionNode {
 public:
     Add(std::shared_ptr<Node> a, std::shared_ptr<Node> b) : FunctionNode(a, b) {}
-    std::shared_ptr<tensor::Tensor> forward() override {
+    std::shared_ptr<Node> forward() override {
         auto a = this->objects[0];
         auto b = this->objects[1];
-        auto data = std::make_shared<tensor::Tensor>(a->data->shape);
+        auto outNode = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(a->data->shape));
         for (auto i = 0; i < a->data->size; i++) {
-            data->data[i] = a->data->data[i] + b->data->data[i];
+            outNode->data->data[i] = a->data->data[i] + b->data->data[i];
         }
-        return data;
+        return outNode;
     }
     std::tuple<std::shared_ptr<Node>, std::shared_ptr<Node>> backward(std::shared_ptr<Node> gradient) override {
         // assertion needed
@@ -78,7 +77,7 @@ public:
 class Linear: public FunctionNode {
 public:
     Linear(std::shared_ptr<Node> a, std::shared_ptr<Node> b) : FunctionNode(a, b) {}
-    std::shared_ptr<tensor::Tensor> forward() override {
+    std::shared_ptr<Node> forward() override {
         // features: (batch_size x input_features)
         auto features = this->objects[0];
         // weights: (input_features x output_features)
@@ -88,9 +87,9 @@ public:
         auto n = weights->data->shape[1];
         // output: (batch_size x output_features)
         auto shape = {m, n};
-        auto data = std::make_shared<tensor::Tensor>(shape);
-        arith::mm(features->data->data, weights->data->data, data->data, m, k, n);
-        return data;
+        auto outNode = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(shape));
+        arith::mm(features->data->data, weights->data->data, outNode->data->data, m, k, n);
+        return outNode;
     }
 
     std::tuple<std::shared_ptr<Node>, std::shared_ptr<Node>> backward(std::shared_ptr<Node> gradient) override {
@@ -104,9 +103,28 @@ public:
         auto grad_weights = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(grad_weights_shape));
         arith::mm(gradient->data->data, weights->data->transpose()->data, grad_features->data->data, gradient->data->shape[0], gradient->data->shape[1], weights->data->shape[0]);
         arith::mm(features->data->transpose()->data, gradient->data->data, grad_weights->data->data, features->data->shape[1], features->data->shape[0], gradient->data->shape[1]);
+        return {grad_features, grad_weights};
     }
 }; //class Linear
 
-
+class ReLU: public FunctionNode {
+public:
+    ReLU(std::shared_ptr<Node> a) : FunctionNode(a) {}
+    std::shared_ptr<Node> forward() override {
+        auto outNode = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(this->objects[0]->data->shape));
+        arith::vector_scalar_max(this->objects[0]->data->data, outNode->data->data, 0.0f);
+    }
+    std::tuple<std::shared_ptr<Node>, std::shared_ptr<Node>> backward(std::shared_ptr<Node> gradient) override {
+        auto grads = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(this->objects[0]->data->shape));
+        for (auto i = 0; i < grads->data->size; i++) {
+            if (this->objects[0]->data->data[i] > 0) {
+                grads->data->data[i] = gradient->data->data[i] * 1.0f;
+            }
+            else {
+                grads->data->data[i] = 0.0f;
+            }
+        }
+    }
+}; // class ReLU
 
 }

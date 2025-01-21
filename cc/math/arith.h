@@ -18,4 +18,10 @@ void mm(const std::vector<T>& a, const std::vector<T>& b, std::vector<T>& c, siz
         }
     }
 }
+
+template<typename T>
+void vector_scalar_max(const std::vector<T>& a, std::vector<T> &b, T scalar) {
+    for (size_t i = 0; i < a.size(); ++i) {
+        b[i] = std::max(a[i], scalar);
+}
 }
