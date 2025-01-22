@@ -129,6 +129,25 @@ public:
     }
 }; // class ReLU
 
+class SquareLoss: public FunctionNode {
+public:
+    SquareLoss(std::shared_ptr<Node> a, std::shared_ptr<Node> b): FunctionNode(a, b) {}
+    std::shared_ptr<tensor::Tensor> forward() {
+        // a: a Node with shape (batch_size x dim)
+        // b: a Node with shape (batch_size x dim)
+        auto a = this->objects[0];
+        auto b = this->objects[1];
+        double meanv = 0.0;
+        for (auto i = 0; i < a->data->size; i++) {
+            meanv += (a->data->data[i] - b->data->data[i]) * (a->data->data[i] - b->data->data[i]) / 2.0;
+        }
+        meanv /= a->data->size;
+        auto res_shape = {1};
+        auto res = std::make_shared<tensor::Tensor>(res_shape);
+        res->data[0] = (float)meanv;
+        return res;
+    }
+}; // class SquareLoss
 
 
 }
