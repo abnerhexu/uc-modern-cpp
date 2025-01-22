@@ -10,8 +10,8 @@ public:
     std::shared_ptr<tensor::Tensor> data;
 public:
     Node() {}
-    virtual std::shared_ptr<Node> forward() = 0;
-    virtual std::tuple<std::shared_ptr<Node>, std::shared_ptr<Node>> backward(std::shared_ptr<Node> gradient) = 0;
+    virtual std::shared_ptr<tensor::Tensor> forward() = 0;
+    virtual std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) = 0;
     virtual void update(std::shared_ptr<tensor::Tensor> grad, float lr) = 0;
     virtual void zero_grad() = 0;
     virtual ~Node() {}
@@ -44,14 +44,15 @@ public:
 class FunctionNode: public Node {
 public:
     std::vector<std::shared_ptr<Node>> objects;
-    std::vector<std::shared_ptr<Node>> gradient;
+    std::vector<std::shared_ptr<tensor::Tensor>> gradient;
 public:
     template <typename... Args>
     FunctionNode(Args ... args) {
-        this->objects = {std::dynamic_pointer_cast<A>(
+        this->objects = {std::dynamic_pointer_cast<Node>(
             std::shared_ptr<std::remove_pointer_t<std::decay_t<Args>>>(args...)
         )
         ...};
+        this->data = this->forward();
     }
 
 }; //class FunctionNode
@@ -59,16 +60,16 @@ public:
 class Add: public FunctionNode {
 public:
     Add(std::shared_ptr<Node> a, std::shared_ptr<Node> b) : FunctionNode(a, b) {}
-    std::shared_ptr<Node> forward() override {
+    std::shared_ptr<tensor::Tensor> forward() override {
         auto a = this->objects[0];
         auto b = this->objects[1];
-        auto outNode = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(a->data->shape));
+        auto outNode = std::make_shared<tensor::Tensor>(a->data->shape);
         for (auto i = 0; i < a->data->size; i++) {
-            outNode->data->data[i] = a->data->data[i] + b->data->data[i];
+            outNode->data[i] = a->data->data[i] + b->data->data[i];
         }
         return outNode;
     }
-    std::tuple<std::shared_ptr<Node>, std::shared_ptr<Node>> backward(std::shared_ptr<Node> gradient) override {
+    std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) override {
         // assertion needed
         return {gradient, gradient};
     }
@@ -77,7 +78,7 @@ public:
 class Linear: public FunctionNode {
 public:
     Linear(std::shared_ptr<Node> a, std::shared_ptr<Node> b) : FunctionNode(a, b) {}
-    std::shared_ptr<Node> forward() override {
+    std::shared_ptr<tensor::Tensor> forward() override {
         // features: (batch_size x input_features)
         auto features = this->objects[0];
         // weights: (input_features x output_features)
@@ -87,22 +88,22 @@ public:
         auto n = weights->data->shape[1];
         // output: (batch_size x output_features)
         auto shape = {m, n};
-        auto outNode = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(shape));
-        arith::mm(features->data->data, weights->data->data, outNode->data->data, m, k, n);
+        auto outNode = std::make_shared<tensor::Tensor>(shape);
+        arith::mm(features->data->data, weights->data->data, outNode->data, m, k, n);
         return outNode;
     }
 
-    std::tuple<std::shared_ptr<Node>, std::shared_ptr<Node>> backward(std::shared_ptr<Node> gradient) override {
+    std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) override {
         auto features = this->objects[0];
         auto weights = this->objects[1];
         // gradient.shape[0] == features.shape[0]
         // gradient.shape[1] == weights.shape[1]
-        auto grad_features_shape = {gradient->data->shape[0], weights->data->shape[0]};
-        auto grad_features = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(grad_features_shape));
-        auto grad_weights_shape = {features->data->shape[1], gradient->data->shape[1]};
-        auto grad_weights = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(grad_weights_shape));
-        arith::mm(gradient->data->data, weights->data->transpose()->data, grad_features->data->data, gradient->data->shape[0], gradient->data->shape[1], weights->data->shape[0]);
-        arith::mm(features->data->transpose()->data, gradient->data->data, grad_weights->data->data, features->data->shape[1], features->data->shape[0], gradient->data->shape[1]);
+        auto grad_features_shape = {gradient->shape[0], weights->data->shape[0]};
+        auto grad_features = std::make_shared<tensor::Tensor>(grad_features_shape);
+        auto grad_weights_shape = {features->data->shape[1], gradient->shape[1]};
+        auto grad_weights = std::make_shared<tensor::Tensor>(grad_weights_shape);
+        arith::mm(gradient->data, weights->data->transpose()->data, grad_features->data, gradient->shape[0], gradient->shape[1], weights->data->shape[0]);
+        arith::mm(features->data->transpose()->data, gradient->data, grad_weights->data, features->data->shape[1], features->data->shape[0], gradient->shape[1]);
         return {grad_features, grad_weights};
     }
 }; //class Linear
@@ -110,21 +111,24 @@ public:
 class ReLU: public FunctionNode {
 public:
     ReLU(std::shared_ptr<Node> a) : FunctionNode(a) {}
-    std::shared_ptr<Node> forward() override {
-        auto outNode = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(this->objects[0]->data->shape));
-        arith::vector_scalar_max(this->objects[0]->data->data, outNode->data->data, 0.0f);
+    std::shared_ptr<tensor::Tensor> forward() override {
+        auto outNode = std::make_shared<tensor::Tensor>(this->objects[0]->data->shape);
+        arith::vector_scalar_max(this->objects[0]->data->data, outNode->data, 0.0f);
     }
-    std::tuple<std::shared_ptr<Node>, std::shared_ptr<Node>> backward(std::shared_ptr<Node> gradient) override {
-        auto grads = std::make_shared<Constant>(std::make_shared<tensor::Tensor>(this->objects[0]->data->shape));
-        for (auto i = 0; i < grads->data->size; i++) {
+    std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) override {
+        auto grads = std::make_shared<tensor::Tensor>(this->objects[0]->data->shape);
+        for (auto i = 0; i < grads->size; i++) {
             if (this->objects[0]->data->data[i] > 0) {
-                grads->data->data[i] = gradient->data->data[i] * 1.0f;
+                grads->data[i] = gradient->data[i] * 1.0f;
             }
             else {
-                grads->data->data[i] = 0.0f;
+                grads->data[i] = 0.0f;
             }
         }
+        return {grads};
     }
 }; // class ReLU
+
+
 
 }
