@@ -23,5 +23,6 @@ template<typename T>
 void vector_scalar_max(const std::vector<T>& a, std::vector<T> &b, T scalar) {
     for (size_t i = 0; i < a.size(); ++i) {
         b[i] = std::max(a[i], scalar);
+    }
 }
 }

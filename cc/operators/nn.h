@@ -149,5 +149,43 @@ public:
     }
 }; // class SquareLoss
 
+class SoftmaxLoss: public FunctionNode {
+public:
+    SoftmaxLoss(std::shared_ptr<Node> logits, std::shared_ptr<Node> labels): FunctionNode(logits, labels) {}
+
+    std::shared_ptr<tensor::Tensor> log_softmax(std::shared_ptr<tensor::Tensor> logits);
+    std::shared_ptr<tensor::Tensor> forward() {
+        auto log_probs = this->log_softmax(this->objects[0]->data);
+        auto labels = this->objects[1]->data;
+        auto batch_size = log_probs->shape[0];
+        auto num_classes = log_probs->shape[1];
+        double loss = 0.0;
+        for (auto i = 0; i < batch_size; i++) {
+            for (auto j = 0; j < num_classes; j++) {
+                loss -= labels->data[i * num_classes + j] * log_probs->data[i * num_classes + j];
+            }
+        }
+        loss /= batch_size;
+        auto res_shape = {1};
+        auto res = std::make_shared<tensor::Tensor>(res_shape);
+        res->data[0] = (float)loss;
+        return res;
+    }
+    std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) override {
+        auto log_probs = this->log_softmax(this->objects[0]->data);
+        auto labels = this->objects[1]->data;
+        auto batch_size = log_probs->shape[0];
+        auto num_classes = log_probs->shape[1];
+        auto grad_logits = std::make_shared<tensor::Tensor>(log_probs->shape);
+        auto grad_labels = std::make_shared<tensor::Tensor>(labels->shape);
+        for (auto i = 0; i < batch_size; i++) {
+            for (auto j = 0; j < num_classes; j++) {
+                grad_logits->data[i * num_classes + j] = gradient->data[0] * (expf(log_probs->data[i * num_classes + j]) - labels->data[i * num_classes + j]) / num_classes;
+                grad_labels->data[i * num_classes + j] = gradient->data[0] * (-log_probs->data[i * num_classes + j]) / num_classes;
+            }
+        }
+        return {grad_logits, grad_labels};
+    }
+}; // class SoftmaxLoss
 
 }
