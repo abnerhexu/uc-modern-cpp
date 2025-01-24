@@ -2,6 +2,7 @@
 #include <random>
 #include <vector>
 #include <memory>
+#include <stdexcept>
 
 namespace tensor {
 
@@ -24,6 +25,17 @@ public:
         }
     }
     std::shared_ptr<Tensor> transpose();
+
+    Tensor operator+(const Tensor& other) const {
+        if (this->shape != other.shape) {
+            throw std::runtime_error("Shapes do not match");
+        }
+        Tensor result(this->shape);
+        for (std::size_t i = 0; i < this->size; ++i) {
+            result.data[i] = this->data[i] + other.data[i];
+        }
+        return result;
+    }
     ~Tensor() = default;
 };  // class Tensor
 

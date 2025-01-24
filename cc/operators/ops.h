@@ -2,6 +2,8 @@
 #include <functional>
 #include <vector>
 #include <algorithm>
+#include <stdexcept>
+#include <numeric>
 
 namespace operators {
 
@@ -78,16 +80,16 @@ auto addLists(const std::vector<float>& vec1, const std::vector<float>& vec2) ->
 }
 
 template<typename T, typename F>
-auto reduce(const std::vector<T>& vec, F func) -> T {
-    return std::accumulate(vec.begin(), vec.end(), func);
+auto reduce(const std::vector<T>& vec, T init, F func) -> T {
+    return std::accumulate(vec.begin(), vec.end(), init, func);
 }
 
 auto sumList(const std::vector<float>& vec) -> float {
-    return reduce(vec, add<float>);
+    return reduce(vec, 0.0f, add<float>);
 }
 
 auto prodList(const std::vector<float>& vec) -> float {
-    return reduce(vec, mul<float>);
+    return reduce(vec, 1.0f, mul<float>);
 }
 
 }

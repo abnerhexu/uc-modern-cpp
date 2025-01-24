@@ -6,7 +6,7 @@ set(CMAKE_CXX_FLAGS -Og)
 set(PYBIND11_DIR /home/hexu/miniconda3/lib/python3.11/site-packages/pybind11)
 set(PYBIND11_FINDPYTHON ON)
 find_package(pybind11 CONFIG REQUIRED PATHS ${PYBIND11_DIR})
-pybind11_add_module(uctc uctc.cc math/arith.cc)
+pybind11_add_module(uctc uctc.cc math/arith.cc operators/nn.cc operators/ops.cc tensor/tensor.cc)
 
 add_custom_command(
     TARGET uctc POST_BUILD
