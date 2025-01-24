@@ -1,3 +1,4 @@
+#pragma once
 #include <numeric>
 #include <random>
 #include <vector>
@@ -35,6 +36,10 @@ public:
             result.data[i] = this->data[i] + other.data[i];
         }
         return result;
+    }
+
+    std::vector<std::size_t> get_shape() const {
+        return this->shape;
     }
     ~Tensor() = default;
 };  // class Tensor

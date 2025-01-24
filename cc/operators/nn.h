@@ -1,3 +1,4 @@
+#pragma once
 #include <vector>
 #include <memory>
 #include <unordered_set>
@@ -20,8 +21,8 @@ public:
     std::vector<std::shared_ptr<Node>> get_parents() {
         return this->objects;
     }
-    virtual void update(std::shared_ptr<tensor::Tensor> grad, float lr) = 0;
-    virtual void zero_grad() = 0;
+    // virtual void update(std::shared_ptr<tensor::Tensor> grad, float lr) = 0;
+    // virtual void zero_grad() = 0;
     virtual ~Node() {}
 };
 
@@ -35,7 +36,13 @@ public:
     Parameter(const std::vector<std::size_t>& shape) {
         this->data = std::make_shared<tensor::Tensor>(shape, true);
     }
-    void update(std::shared_ptr<tensor::Tensor> grad, float lr) override {
+    std::shared_ptr<tensor::Tensor> forward() {
+        return this->data;
+    };
+    std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) {
+        return {gradient};
+    };
+    void update(std::shared_ptr<tensor::Tensor> grad, float lr) {
         for (auto i = 0; i < this->data->size; i++) {
             this->data->data[i] -= lr * grad->data[i];
         }
@@ -163,6 +170,18 @@ public:
         auto res = std::make_shared<tensor::Tensor>(res_shape);
         res->data[0] = (float)meanv;
         return res;
+    }
+    std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) override {
+        float g = gradient->data[0];
+        auto a = this->objects[0];
+        auto b = this->objects[1];
+        auto grad_a = std::make_shared<tensor::Tensor>(a->data->shape);
+        auto grad_b = std::make_shared<tensor::Tensor>(b->data->shape);
+        for (auto i = 0; i < a->data->size; i++) {
+            grad_a->data[i] = g * (a->data->data[i] - b->data->data[i]) / a->data->size;
+            grad_b->data[i] = g * (b->data->data[i] - a->data->data[i]) / a->data->size;
+        }
+        return {grad_a, grad_b};
     }
 }; // class SquareLoss
 
