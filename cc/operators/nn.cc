@@ -60,10 +60,15 @@ std::vector<std::shared_ptr<tensor::Tensor>> gradients(std::shared_ptr<Loss> los
     grads[loss]->data[0] = 1.0;
 
     for (auto it = tape.rbegin(); it != tape.rend(); it++) {
+        // std::cout << "tape it: " << std::endl;
         auto node = *it;
+        // if (node->data->shape[0] == 1) {
+        //     std::cout << "coming to squareloss" << std::endl;
+        // }
         auto parent_grads = node->backward(grads[node]);
         auto parents = node->get_parents();
         for (size_t i = 0; i < parents.size(); i++) {
+            // std::cout << "this grad shape: " << grads[parents[i]]->data.size() << std::endl;
             for (auto ind = 0; ind < parents[i]->data->size; ind++) {
                 grads[parents[i]]->data[ind] += parent_grads[i]->data[ind];
             }
@@ -75,6 +80,7 @@ std::vector<std::shared_ptr<tensor::Tensor>> gradients(std::shared_ptr<Loss> los
         result.emplace_back(grads[param]);
     }
 
+    // std::cout << "len(result): " << result.size() << std::endl;
     return result;
 }
 

@@ -8,22 +8,37 @@ namespace py = pybind11;
 PYBIND11_MODULE(uctc, m) {
 
     py::module C = m.def_submodule("C", "C module");
+
     py::module arith = C.def_submodule("arith", "Arithmetic module");
     arith.def("sqrt", &arith::sqrt, "Square root function", py::arg("x") = 0.0);
 
     py::module nn = m.def_submodule("nn", "Neural network module");
-    py::class_<nn::Node, std::shared_ptr<nn::Node>>(nn, "Node");
+    py::class_<nn::Node, std::shared_ptr<nn::Node>>(nn, "Node")
+    .def("data", &nn::Node::get_data, "Get the data of the node", pybind11::return_value_policy::copy);
 
     py::class_<tensor::Tensor, std::shared_ptr<tensor::Tensor>>(m, "Tensor")
     .def_readonly("shape", &tensor::Tensor::shape)
-    .def_readonly("size", &tensor::Tensor::size);
+    .def_readonly("size", &tensor::Tensor::size)
+    .def("data", &tensor::Tensor::get_data, "Get the data of the tensor", pybind11::return_value_policy::copy);
 
     py::class_<nn::DataNode, nn::Node, std::shared_ptr<nn::DataNode>>(nn, "DataNode");
 
     py::class_<nn::Parameter, nn::DataNode, std::shared_ptr<nn::Parameter>>(nn, "Parameter")
-    .def(pybind11::init<const std::vector<std::size_t>&>(), "Create a parameter node with a given shape");
+    .def(pybind11::init<const std::vector<std::size_t>&>(), "Create a parameter node with a given shape")
+    .def("update", &nn::Parameter::update, "Update the parameter node", py::arg("grad") = nullptr, py::arg("learning_rate") = 0.001);
+
+    py::class_<nn::Constant, nn::DataNode, std::shared_ptr<nn::Constant>>(nn, "Constant")
+    .def(pybind11::init<py::array_t<float>>(), "Create a constant node from a numpy array");
 
     py::class_<nn::FunctionNode, nn::Node, std::shared_ptr<nn::FunctionNode>>(nn, "FunctionNode");
+
+    py::class_<nn::Add, nn::FunctionNode, std::shared_ptr<nn::Add>>(nn, "Add")
+    .def(py::init<std::shared_ptr<nn::Node>, std::shared_ptr<nn::Node>>(), "Create an add function node")
+    .def("forward", &nn::Add::forward, "Forward function");
+
+    py::class_<nn::AddBias, nn::FunctionNode, std::shared_ptr<nn::AddBias>>(nn, "AddBias")
+    .def(py::init<std::shared_ptr<nn::Node>, std::shared_ptr<nn::Node>>(), "Create an add bias function node")
+    .def("forward", &nn::AddBias::forward, "Forward function");
 
     py::class_<nn::Linear, nn::FunctionNode, std::shared_ptr<nn::Linear>>(nn, "Linear")
     .def(py::init<std::shared_ptr<nn::Node>, std::shared_ptr<nn::Node>>(), "Create a linear function node")
@@ -36,5 +51,9 @@ PYBIND11_MODULE(uctc, m) {
 
     py::class_<nn::SquareLoss, nn::Loss, std::shared_ptr<nn::SquareLoss>>(nn, "SquareLoss")
     .def(py::init<std::shared_ptr<nn::Node>, std::shared_ptr<nn::Node>>(), "Create a square loss function node");
+
+    nn.def("gradients", &nn::gradients, "Calculate the gradients", py::arg("loss") = nullptr, py::arg("nodes") = std::vector<std::shared_ptr<nn::Node>>{});
+    nn.def("pyarray_to_tensor", &tensor::pyarray_to_tensor, "Convert a numpy array to a tensor", py::arg("arr"));
+    
 }
 

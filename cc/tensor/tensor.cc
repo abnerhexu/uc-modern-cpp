@@ -24,4 +24,17 @@ std::shared_ptr<Tensor> Tensor::transpose() {
     return t;
 }
 
+std::shared_ptr<Tensor> pyarray_to_tensor(py::array_t<float> array) {
+    py::buffer_info info = array.request();
+    float* dataPtr = static_cast<float*>(info.ptr);
+    std::vector<std::size_t> shape = {};
+    for (auto &it: info.shape) {
+        shape.push_back(it);
+    }
+    auto tensor = std::make_shared<Tensor>(shape);
+    std::vector<float> result(dataPtr, dataPtr + info.size);
+    tensor->data = result;
+    return tensor;
+}
+
 }

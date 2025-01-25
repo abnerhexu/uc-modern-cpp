@@ -4,8 +4,13 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <algorithm>
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <iostream>
 #include "../tensor/tensor.h"
 #include "../math/arith.h"
+
+namespace py = pybind11;
 
 namespace nn {
 
@@ -20,6 +25,9 @@ public:
     virtual std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) = 0;
     std::vector<std::shared_ptr<Node>> get_parents() {
         return this->objects;
+    }
+    std::vector<float> get_data() {
+        return this->data->data;
     }
     // virtual void update(std::shared_ptr<tensor::Tensor> grad, float lr) = 0;
     // virtual void zero_grad() = 0;
@@ -54,6 +62,16 @@ public:
     Constant(std::shared_ptr<tensor::Tensor> data) {
         this->data = data;
     }
+    Constant(py::array_t<float> array) {
+        this->data = tensor::pyarray_to_tensor(array);
+    }
+    std::shared_ptr<tensor::Tensor> forward() {
+        return this->data;
+    };
+    std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) {
+        return {gradient};
+    };
+    void update(std::shared_ptr<tensor::Tensor> grad, float lr) {}
 }; // class Constant
 
 class FunctionNode: public Node {
@@ -61,11 +79,9 @@ public:
     FunctionNode(std::shared_ptr<Node> a, std::shared_ptr<Node> b) {
         this->objects.emplace_back(a);
         this->objects.emplace_back(b);
-        this->data = this->forward();
     }
     FunctionNode(std::shared_ptr<Node> a) {
         this->objects.emplace_back(a);
-        this->data = this->forward();
     }
 
     std::shared_ptr<tensor::Tensor> forward() override {
@@ -75,7 +91,9 @@ public:
 
 class Add: public FunctionNode {
 public:
-    Add(std::shared_ptr<Node> a, std::shared_ptr<Node> b) : FunctionNode(a, b) {}
+    Add(std::shared_ptr<Node> a, std::shared_ptr<Node> b) : FunctionNode(a, b) {
+        this->data = this->forward();
+    }
     std::shared_ptr<tensor::Tensor> forward() override {
         auto a = this->objects[0];
         auto b = this->objects[1];
@@ -91,9 +109,48 @@ public:
     }
 };
 
+class AddBias: public FunctionNode {
+public:
+    AddBias(std::shared_ptr<Node> a, std::shared_ptr<Node> b) : FunctionNode(a, b) {
+        this->data = this->forward();
+    }
+    std::shared_ptr<tensor::Tensor> forward() override {
+        // features: a Node with shape (batch_size x num_features)
+        // bias: a Node with shape (1 x num_features)
+        auto features = this->objects[0];
+        auto bias = this->objects[1];
+        auto outNode = std::make_shared<tensor::Tensor>(features->data->shape);
+        for (auto i = 0; i < features->data->shape[0]; i++) {
+            for (auto j = 0; j < bias->data->shape[1]; j++) {
+                outNode->data[i * bias->data->shape[1] + j] = features->data->data[i * bias->data->shape[1] + j] + bias->data->data[j];
+            }
+        }
+        return outNode;
+    }
+    std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) override {
+        // assertion needed
+        if (gradient->shape[1] != this->objects[1]->data->shape[1]) {
+            throw std::runtime_error("gradient shape does not match bias shape");
+        }
+        auto g_bias = std::make_shared<tensor::Tensor>(this->objects[1]->data->shape);
+        for (auto i = 0; i < gradient->shape[0]; i++) {
+            for (auto j = 0; j < gradient->shape[1]; j++) {
+                g_bias->data[j] += gradient->data[i * gradient->shape[1] + j];
+            }
+        }
+        for (auto j = 0; j < gradient->shape[1]; j++) {
+            g_bias->data[j] /= gradient->shape[0];
+        }
+        return {gradient, g_bias};
+    }
+}; // class AddBias
+
+
 class Linear: public FunctionNode {
 public:
-    Linear(std::shared_ptr<Node> a, std::shared_ptr<Node> b) : FunctionNode(a, b) {}
+    Linear(std::shared_ptr<Node> a, std::shared_ptr<Node> b) : FunctionNode(a, b) {
+        this->data = this->forward();
+    }
     std::shared_ptr<tensor::Tensor> forward() override {
         // features: (batch_size x input_features)
         auto features = this->objects[0];
@@ -126,8 +183,11 @@ public:
 
 class ReLU: public FunctionNode {
 public:
-    ReLU(std::shared_ptr<Node> a) : FunctionNode(a) {}
+    ReLU(std::shared_ptr<Node> a) : FunctionNode(a) {
+        this->data = this->forward();
+    }
     std::shared_ptr<tensor::Tensor> forward() override {
+        // x: a Node with shape (batch_size x num_features)
         auto outNode = std::make_shared<tensor::Tensor>(this->objects[0]->data->shape);
         arith::vector_scalar_max(this->objects[0]->data->data, outNode->data, 0.0f);
         return outNode;
@@ -155,7 +215,9 @@ public:
 
 class SquareLoss: public Loss {
 public:
-    SquareLoss(std::shared_ptr<Node> a, std::shared_ptr<Node> b): Loss(a, b) {}
+    SquareLoss(std::shared_ptr<Node> a, std::shared_ptr<Node> b): Loss(a, b) {
+        this->data = this->forward();
+    }
     std::shared_ptr<tensor::Tensor> forward() {
         // a: a Node with shape (batch_size x dim)
         // b: a Node with shape (batch_size x dim)
@@ -187,7 +249,9 @@ public:
 
 class SoftmaxLoss: public Loss {
 public:
-    SoftmaxLoss(std::shared_ptr<Node> logits, std::shared_ptr<Node> labels): Loss(logits, labels) {}
+    SoftmaxLoss(std::shared_ptr<Node> logits, std::shared_ptr<Node> labels): Loss(logits, labels) {
+        this->data = this->forward();
+    }
 
     std::shared_ptr<tensor::Tensor> log_softmax(std::shared_ptr<tensor::Tensor> logits);
     std::shared_ptr<tensor::Tensor> forward() {
@@ -223,5 +287,7 @@ public:
         return {grad_logits, grad_labels};
     }
 }; // class SoftmaxLoss
+
+std::vector<std::shared_ptr<tensor::Tensor>> gradients(std::shared_ptr<Loss> loss, std::vector<std::shared_ptr<Node>> parameters);
 
 }
