@@ -1,2 +1,4 @@
 .vscode
 cc/build
+*/__pycache__
+*.pyc

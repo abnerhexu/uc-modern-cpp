@@ -389,4 +389,5 @@ def as_scalar(node):
     assert node.data.size == 1, (
         "Node has shape {}, cannot convert to a scalar".format(
             format_shape(node.data.shape)))
-    return np.asscalar(node.data)
+    node.data = node.data.flatten()
+    return node.data.tolist()[0]

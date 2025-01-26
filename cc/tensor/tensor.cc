@@ -12,8 +12,8 @@ std::shared_ptr<Tensor> Tensor::transpose() {
 
     std::vector<float> transposed_data(size);
 
-    for (std::size_t i = 0; i < rows; ++i) {
-        for (std::size_t j = 0; j < cols; ++j) {
+    for (std::size_t i = 0; i < rows; i++) {
+        for (std::size_t j = 0; j < cols; j++) {
             transposed_data[j * rows + i] = this->data[i * cols + j];
         }
     }

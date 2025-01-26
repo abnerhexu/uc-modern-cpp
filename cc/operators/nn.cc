@@ -2,7 +2,7 @@
 
 namespace nn {
 
-std::shared_ptr<tensor::Tensor> SoftmaxLoss::log_softmax(std::shared_ptr<tensor::Tensor> logits) {
+std::shared_ptr<tensor::Tensor> log_softmax(std::shared_ptr<tensor::Tensor> logits) {
     auto batch_size = logits->shape[0];
     auto num_classes = logits->shape[1];
     auto log_probs_shape = {batch_size, num_classes};

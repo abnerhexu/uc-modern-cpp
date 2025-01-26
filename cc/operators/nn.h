@@ -41,8 +41,20 @@ public:
 
 class Parameter: public DataNode {
 public:
-    Parameter(const std::vector<std::size_t>& shape) {
-        this->data = std::make_shared<tensor::Tensor>(shape, true);
+    // Parameter(const std::vector<std::size_t>& shape) {
+    //     this->data = std::make_shared<tensor::Tensor>(shape, true);
+    // }
+    Parameter(py::array_t<float> array) {
+        py::buffer_info info = array.request();
+        float* dataPtr = static_cast<float*>(info.ptr);
+        std::vector<std::size_t> shape = {};
+        for (auto &it: info.shape) {
+            shape.push_back(it);
+        }
+        auto tensor = std::make_shared<tensor::Tensor>(shape);
+        std::vector<float> result(dataPtr, dataPtr + info.size);
+        tensor->data = result;
+        this->data = tensor;
     }
     std::shared_ptr<tensor::Tensor> forward() {
         return this->data;
@@ -50,7 +62,7 @@ public:
     std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) {
         return {gradient};
     };
-    void update(std::shared_ptr<tensor::Tensor> grad, float lr) {
+    void update(std::shared_ptr<tensor::Tensor> grad, double lr) {
         for (auto i = 0; i < this->data->size; i++) {
             this->data->data[i] -= lr * grad->data[i];
         }
@@ -71,7 +83,7 @@ public:
     std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) {
         return {gradient};
     };
-    void update(std::shared_ptr<tensor::Tensor> grad, float lr) {}
+    // void update(std::shared_ptr<tensor::Tensor> grad, float lr) {}
 }; // class Constant
 
 class FunctionNode: public Node {
@@ -138,9 +150,9 @@ public:
                 g_bias->data[j] += gradient->data[i * gradient->shape[1] + j];
             }
         }
-        for (auto j = 0; j < gradient->shape[1]; j++) {
-            g_bias->data[j] /= gradient->shape[0];
-        }
+        // for (auto j = 0; j < gradient->shape[1]; j++) {
+        //     g_bias->data[j] /= gradient->shape[0];
+        // }
         return {gradient, g_bias};
     }
 }; // class AddBias
@@ -159,6 +171,7 @@ public:
         auto m = features->data->shape[0];
         auto k = features->data->shape[1];
         auto n = weights->data->shape[1];
+        // std::cout << m << " " << n << " " << k << std::endl;
         // output: (batch_size x output_features)
         auto shape = {m, n};
         auto outNode = std::make_shared<tensor::Tensor>(shape);
@@ -247,15 +260,16 @@ public:
     }
 }; // class SquareLoss
 
+std::shared_ptr<tensor::Tensor> log_softmax(std::shared_ptr<tensor::Tensor> logits);
+
 class SoftmaxLoss: public Loss {
 public:
     SoftmaxLoss(std::shared_ptr<Node> logits, std::shared_ptr<Node> labels): Loss(logits, labels) {
         this->data = this->forward();
     }
 
-    std::shared_ptr<tensor::Tensor> log_softmax(std::shared_ptr<tensor::Tensor> logits);
     std::shared_ptr<tensor::Tensor> forward() {
-        auto log_probs = this->log_softmax(this->objects[0]->data);
+        auto log_probs = log_softmax(this->objects[0]->data);
         auto labels = this->objects[1]->data;
         auto batch_size = log_probs->shape[0];
         auto num_classes = log_probs->shape[1];
@@ -272,7 +286,7 @@ public:
         return res;
     }
     std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) override {
-        auto log_probs = this->log_softmax(this->objects[0]->data);
+        auto log_probs = log_softmax(this->objects[0]->data);
         auto labels = this->objects[1]->data;
         auto batch_size = log_probs->shape[0];
         auto num_classes = log_probs->shape[1];

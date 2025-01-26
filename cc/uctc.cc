@@ -24,7 +24,7 @@ PYBIND11_MODULE(uctc, m) {
     py::class_<nn::DataNode, nn::Node, std::shared_ptr<nn::DataNode>>(nn, "DataNode");
 
     py::class_<nn::Parameter, nn::DataNode, std::shared_ptr<nn::Parameter>>(nn, "Parameter")
-    .def(pybind11::init<const std::vector<std::size_t>&>(), "Create a parameter node with a given shape")
+    .def(pybind11::init<py::array_t<float>>(), "Create a parameter from an array.")
     .def("update", &nn::Parameter::update, "Update the parameter node", py::arg("grad") = nullptr, py::arg("learning_rate") = 0.001);
 
     py::class_<nn::Constant, nn::DataNode, std::shared_ptr<nn::Constant>>(nn, "Constant")
@@ -51,6 +51,10 @@ PYBIND11_MODULE(uctc, m) {
 
     py::class_<nn::SquareLoss, nn::Loss, std::shared_ptr<nn::SquareLoss>>(nn, "SquareLoss")
     .def(py::init<std::shared_ptr<nn::Node>, std::shared_ptr<nn::Node>>(), "Create a square loss function node");
+    py::class_<nn::SoftmaxLoss, nn::Loss, std::shared_ptr<nn::SoftmaxLoss>>(nn, "SoftmaxLoss")
+    .def(py::init<std::shared_ptr<nn::Node>, std::shared_ptr<nn::Node>>(), "Create a softmax loss function node");
+    
+    nn.def("log_softmax", &nn::log_softmax, "Log softmax function", py::arg("logits"));
 
     nn.def("gradients", &nn::gradients, "Calculate the gradients", py::arg("loss") = nullptr, py::arg("nodes") = std::vector<std::shared_ptr<nn::Node>>{});
     nn.def("pyarray_to_tensor", &tensor::pyarray_to_tensor, "Convert a numpy array to a tensor", py::arg("arr"));

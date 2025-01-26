@@ -427,21 +427,21 @@ alphabet above have been substituted with ASCII symbols.""".strip())
 
 def main():
     import models
-    model = models.PerceptronModel(3)
-    dataset = PerceptronDataset(model)
-    model.train(dataset)
+    # model = models.PerceptronModel(3)
+    # dataset = PerceptronDataset(model)
+    # model.train(dataset)
 
     model = models.RegressionModel()
     dataset = RegressionDataset(model)
     model.train(dataset)
 
-    model = models.DigitClassificationModel()
-    dataset = DigitClassificationDataset(model)
-    model.train(dataset)
+    # model = models.DigitClassificationModel()
+    # dataset = DigitClassificationDataset(model)
+    # model.train(dataset)
 
-    model = models.LanguageIDModel()
-    dataset = LanguageIDDataset(model)
-    model.train(dataset)
+    # model = models.LanguageIDModel()
+    # dataset = LanguageIDDataset(model)
+    # model.train(dataset)
 
 if __name__ == "__main__":
     main()

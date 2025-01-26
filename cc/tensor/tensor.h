@@ -23,8 +23,9 @@ public:
         this->data.resize(this->size);
         this->shape = shape;
         if (rand_init) {
+            double limit = std::sqrt(3.0 / ((shape[0] + shape[1]) / 2.0));
             std::mt19937 gen(42);
-            std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
+            std::uniform_real_distribution<float> dis(-limit, limit);
             for (std::size_t i = 0; i < this->size; ++i) {
                 this->data[i] = dis(gen);
             }
