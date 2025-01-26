@@ -29,6 +29,9 @@ public:
     std::vector<float> get_data() {
         return this->data->data;
     }
+    std::shared_ptr<tensor::Tensor> get_tensor() {
+        return this->data;
+    }
     // virtual void update(std::shared_ptr<tensor::Tensor> grad, float lr) = 0;
     // virtual void zero_grad() = 0;
     virtual ~Node() {}

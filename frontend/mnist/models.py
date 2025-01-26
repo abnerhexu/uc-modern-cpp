@@ -150,6 +150,18 @@ class DigitClassificationModel(object):
     def __init__(self):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+        self.input_features = 784
+        self.h1 = 200
+        self.h2 = 100
+        self.output_features = 10
+        self.lr = 0.01
+        self.batch_size = 100
+        self.w1 = nn.Parameter(self.input_features, self.h1)
+        self.b1 = nn.Parameter(1, self.h1)
+        self.w2 = nn.Parameter(self.h1, self.h2)
+        self.b2 = nn.Parameter(1, self.h2)
+        self.w3 = nn.Parameter(self.h2, self.output_features)
+        self.b3 = nn.Parameter(1, self.output_features)
 
     def run(self, x):
         """
@@ -166,6 +178,10 @@ class DigitClassificationModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        l1 = nn.ReLU(nn.AddBias(nn.Linear(x, self.w1), self.b1))
+        l2 = nn.ReLU(nn.AddBias(nn.Linear(l1, self.w2), self.b2))
+        l3 = nn.AddBias(nn.Linear(l2, self.w3), self.b3)
+        return l3
 
     def get_loss(self, x, y):
         """
@@ -181,12 +197,27 @@ class DigitClassificationModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        return nn.SoftmaxLoss(self.run(x), y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
+        while True:
+            for x, y in dataset.iterate_once(self.batch_size):
+                loss = self.get_loss(x, y)
+                g_w1, g_b1, g_w2, g_b2, g_w3, g_b3 = nn.gradients(loss, [self.w1, self.b1, self.w2, self.b2, self.w3, self.b3])
+                self.w1.update(g_w1, -self.lr)
+                self.b1.update(g_b1, -self.lr)
+                self.w2.update(g_w2, -self.lr)
+                self.b2.update(g_b2, -self.lr)
+                self.w3.update(g_w3, -self.lr)
+                self.b3.update(g_b3, -self.lr)
+            accuracy = dataset.get_validation_accuracy()
+            print(accuracy)
+            if accuracy > 0.95:
+                break
 
 class LanguageIDModel(object):
     """

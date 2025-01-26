@@ -431,13 +431,13 @@ def main():
     # dataset = PerceptronDataset(model)
     # model.train(dataset)
 
-    model = models.RegressionModel()
-    dataset = RegressionDataset(model)
-    model.train(dataset)
-
-    # model = models.DigitClassificationModel()
-    # dataset = DigitClassificationDataset(model)
+    # model = models.RegressionModel()
+    # dataset = RegressionDataset(model)
     # model.train(dataset)
+
+    model = models.DigitClassificationModel()
+    dataset = DigitClassificationDataset(model)
+    model.train(dataset)
 
     # model = models.LanguageIDModel()
     # dataset = LanguageIDDataset(model)

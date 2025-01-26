@@ -12,14 +12,15 @@ PYBIND11_MODULE(uctc, m) {
     py::module arith = C.def_submodule("arith", "Arithmetic module");
     arith.def("sqrt", &arith::sqrt, "Square root function", py::arg("x") = 0.0);
 
-    py::module nn = m.def_submodule("nn", "Neural network module");
-    py::class_<nn::Node, std::shared_ptr<nn::Node>>(nn, "Node")
-    .def("data", &nn::Node::get_data, "Get the data of the node", pybind11::return_value_policy::copy);
-
     py::class_<tensor::Tensor, std::shared_ptr<tensor::Tensor>>(m, "Tensor")
     .def_readonly("shape", &tensor::Tensor::shape)
     .def_readonly("size", &tensor::Tensor::size)
     .def("data", &tensor::Tensor::get_data, "Get the data of the tensor", pybind11::return_value_policy::copy);
+    
+    py::module nn = m.def_submodule("nn", "Neural network module");
+    py::class_<nn::Node, std::shared_ptr<nn::Node>>(nn, "Node")
+    .def("data", &nn::Node::get_data, "Get the data of the node", pybind11::return_value_policy::copy)
+    .def("tensor", &nn::Node::get_tensor, "Get the tensor of the node", pybind11::return_value_policy::automatic_reference);
 
     py::class_<nn::DataNode, nn::Node, std::shared_ptr<nn::DataNode>>(nn, "DataNode");
 
@@ -58,6 +59,8 @@ PYBIND11_MODULE(uctc, m) {
 
     nn.def("gradients", &nn::gradients, "Calculate the gradients", py::arg("loss") = nullptr, py::arg("nodes") = std::vector<std::shared_ptr<nn::Node>>{});
     nn.def("pyarray_to_tensor", &tensor::pyarray_to_tensor, "Convert a numpy array to a tensor", py::arg("arr"));
-    
+    nn.def("argmax", &tensor::argmax, "Get a tensor's argmax", py::arg("tensor"), py::arg("axis"));
+    nn.def("mean", &tensor::mean, "Get a tensor element's mean value", py::arg("tensor"));
+    nn.def("exp", &tensor::exp, "Get exp of a tensor", py::arg("tensor"));
 }
 

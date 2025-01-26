@@ -5,8 +5,9 @@ import collections
 
 import matplotlib.pyplot as plt
 import uctc.nn as nn 
+from utils import parameter_data, Dataset
 
-use_graphics = True
+use_graphics = False
 
 class DigitClassificationModel(object):
     """
@@ -31,12 +32,12 @@ class DigitClassificationModel(object):
         self.output_features = 10
         self.lr = 0.01
         self.batch_size = 100
-        self.w1 = nn.Parameter([self.input_features, self.h1])
-        self.b1 = nn.Parameter([1, self.h1])
-        self.w2 = nn.Parameter([self.h1, self.h2])
-        self.b2 = nn.Parameter([1, self.h2])
-        self.w3 = nn.Parameter([self.h2, self.output_features])
-        self.b3 = nn.Parameter([1, self.output_features])
+        self.w1 = nn.Parameter(parameter_data(self.input_features, self.h1))
+        self.b1 = nn.Parameter(parameter_data(1, self.h1))
+        self.w2 = nn.Parameter(parameter_data(self.h1, self.h2))
+        self.b2 = nn.Parameter(parameter_data(1, self.h2))
+        self.w3 = nn.Parameter(parameter_data(self.h2, self.output_features))
+        self.b3 = nn.Parameter(parameter_data(1, self.output_features))
 
 
     def run(self, x):
@@ -95,42 +96,6 @@ class DigitClassificationModel(object):
             if accuracy > 0.95:
                 break
 
-class Dataset(object):
-    def __init__(self, x, y):
-        assert isinstance(x, np.ndarray)
-        assert isinstance(y, np.ndarray)
-        assert np.issubdtype(x.dtype, np.floating)
-        assert np.issubdtype(y.dtype, np.floating)
-        assert x.ndim == 2
-        assert y.ndim == 2
-        assert x.shape[0] == y.shape[0]
-        self.x = x
-        self.y = y
-
-    def iterate_once(self, batch_size):
-        assert isinstance(batch_size, int) and batch_size > 0, (
-            "Batch size should be a positive integer, got {!r}".format(
-                batch_size))
-        assert self.x.shape[0] % batch_size == 0, (
-            "Dataset size {:d} is not divisible by batch size {:d}".format(
-                self.x.shape[0], batch_size))
-        index = 0
-        while index < self.x.shape[0]:
-            x = self.x[index:index + batch_size]
-            y = self.y[index:index + batch_size]
-            yield nn.Constant(x), nn.Constant(y)
-            index += batch_size
-
-    def iterate_forever(self, batch_size):
-        while True:
-            yield from self.iterate_once(batch_size)
-
-    def get_validation_accuracy(self):
-        raise NotImplementedError(
-            "No validation data is available for this dataset. "
-            "In this assignment, only the Digit Classification and Language "
-            "Identification datasets have validation data.")
-
 def get_data_path(filename):
     path = os.path.join(
         os.path.dirname(__file__), os.pardir, "data", filename)
@@ -145,7 +110,7 @@ def get_data_path(filename):
     return path
 
 class DigitClassificationDataset(Dataset):
-    def __init__(self, model):
+    def __init__(self, model: DigitClassificationModel):
         mnist_path = get_data_path("mnist.npz")
 
         with np.load(mnist_path) as data:
@@ -215,11 +180,14 @@ class DigitClassificationDataset(Dataset):
             yield x, y
 
             if use_graphics and time.time() - self.last_update > 1:
-                dev_logits_raw = self.model.run(nn.Constant(self.dev_images)).data()
-                dev_logits = np.array(dev_logits_raw).reshape(5000, 10)
-                dev_predicted = np.argmax(dev_logits, axis=1)
-                assert 0
-                dev_probs = np.exp(nn.log_softmax(dev_logits_raw))
+                dev_logits_raw = self.model.run(nn.Constant(self.dev_images)).tensor()
+                # dev_logits = np.array(dev_logits_raw.data()).reshape(5000, 10)
+                # dev_predicted = np.argmax(dev_logits, axis=1)
+                dev_argmax = nn.argmax(dev_logits_raw, axis=1)
+                dev_predicted = np.array(dev_argmax.data())
+                # sftmax = np.array(nn.log_softmax(nn.pyarray_to_tensor(dev_logits)).data()).reshape(5000, 10)
+                sftmax = nn.log_softmax(dev_logits_raw)
+                dev_probs = np.array(nn.exp(sftmax).data()).reshape(5000, 10)
                 dev_accuracy = np.mean(dev_predicted == self.dev_labels)
 
                 self.status.set_text(
@@ -250,8 +218,8 @@ class DigitClassificationDataset(Dataset):
                 self.last_update = time.time()
 
     def get_validation_accuracy(self):
-        dev_logits = self.model.run(nn.Constant(self.dev_images)).data
-        dev_predicted = np.argmax(dev_logits, axis=1)
+        dev_logits = self.model.run(nn.Constant(self.dev_images)).tensor()
+        dev_predicted = np.array(nn.argmax(dev_logits, axis=1).data())
         dev_accuracy = np.mean(dev_predicted == self.dev_labels)
         return dev_accuracy
 
