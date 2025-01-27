@@ -54,10 +54,6 @@ auto map(const std::vector<T>& vec, F func) -> std::vector<decltype(func(std::de
     return result;
 }
 
-auto negList(const std::vector<float>& vec) -> std::vector<float> {
-    return map(vec, neg<float>);
-}
-
 template <typename T1, typename T2, typename F>
 auto zipWith(const std::vector<T1>& vec1, const std::vector<T2>& vec2, F func)
     -> std::vector<decltype(func(std::declval<T1>(), std::declval<T2>()))> {
@@ -76,21 +72,20 @@ auto zipWith(const std::vector<T1>& vec1, const std::vector<T2>& vec2, F func)
     return result;
 }
 
-auto addLists(const std::vector<float>& vec1, const std::vector<float>& vec2) -> std::vector<float> {
-    return zipWith(vec1, vec2, add<float>);
-}
-
 template<typename T, typename F>
 auto reduce(const std::vector<T>& vec, T init, F func) -> T {
     return std::accumulate(vec.begin(), vec.end(), init, func);
 }
 
-auto sumList(const std::vector<float>& vec) -> float {
-    return reduce(vec, 0.0f, add<float>);
-}
+float is_close(float x, float y);
+float sigmoid(float x);
+float relu(float x);
+float inv(float x);
+float inv_back(float x, float d);
+float relu_back(float x, float d);
 
-auto prodList(const std::vector<float>& vec) -> float {
-    return reduce(vec, 1.0f, mul<float>);
-}
-
+auto sumList(const std::vector<float>& vec) -> float;
+auto prodList(const std::vector<float>& vec) -> float;
+auto addLists(const std::vector<float>& vec1, const std::vector<float>& vec2) -> std::vector<float>;
+auto negList(const std::vector<float>& vec) -> std::vector<float>;
 }

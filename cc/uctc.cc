@@ -3,6 +3,8 @@
 #include "math/arith.h"
 #include "operators/nn.h"
 #include "tensor/tensor.h"
+#include "operators/ops.h"
+
 namespace py = pybind11;
 
 PYBIND11_MODULE(uctc, m) {
@@ -63,5 +65,38 @@ PYBIND11_MODULE(uctc, m) {
     nn.def("argmax", &tensor::argmax, "Get a tensor's argmax", py::arg("tensor"), py::arg("axis"));
     nn.def("mean", &tensor::mean, "Get a tensor element's mean value", py::arg("tensor"));
     nn.def("exp", &tensor::exp, "Get exp of a tensor", py::arg("tensor"));
+
+    // framework test
+    py::module framework = m.def_submodule("framework", "Framework module");
+    py::module basis = framework.def_submodule("basis", "Basic modules");
+    
+    // task 1
+    basis.def("mul", &operators::mul<int>, "Multiply two integers", py::arg("a"), py::arg("b"));
+    basis.def("id", &operators::id<int>, "Identity function", py::arg("a"));
+    basis.def("add", &operators::add<int>, "Add two integers", py::arg("a"), py::arg("b"));
+    basis.def("neg", &operators::neg<int>, "Negate an integer", py::arg("a"));
+    basis.def("lt", &operators::lt<int>, "Less than operator", py::arg("a"), py::arg("b"));
+    basis.def("eq", &operators::eq<int>, "Equal operator", py::arg("a"), py::arg("b"));
+    basis.def("max", &operators::max<int>, "Max operator", py::arg("a"), py::arg("b"));
+    
+    // task 2
+    basis.def("is_close", &operators::is_close, "Check if two floats are close", py::arg("x"), py::arg("y"));
+    basis.def("sigmoid", &operators::sigmoid, "Sigmoid function", py::arg("x"));
+    basis.def("relu", &operators::relu, "ReLU function", py::arg("x"));
+    basis.def("inv", &operators::inv, "Inverse function", py::arg("x"));
+    basis.def("inv_back", &operators::inv_back, "Inv back function", py::arg("x"), py::arg("d"));
+    basis.def("relu_back", &operators::relu_back, "ReLU back function", py::arg("x"), py::arg("d"));
+
+    // task 3
+    basis.def("negList", &operators::negList, "Negate a list of integers", py::arg("lst"));
+
+    // task 4, 5
+    basis.def("addLists", &operators::addLists, "Add two lists of integers", py::arg("lst1"), py::arg("lst2"));
+
+    // task 6
+    basis.def("sumList", &operators::sumList, "Sum a list of integers", py::arg("lst"));
+
+    // task 7
+    basis.def("prodList", &operators::prodList, "Multiply a list of integers", py::arg("lst"));
 }
 

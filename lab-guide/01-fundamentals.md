@@ -83,10 +83,10 @@ decltype(func(std::declval<T>()))
 
 > 在`map`函数中，我们需要推导`func`的返回类型。假设`func`是一个函数对象，接受`T`类型的参数并返回某种类型`R`，我们可以使用`std::declval`来模拟调用`func`的过程。
 
-**[TASK 3]** 在`ops.h`中，调用我们给出的`map`函数实现和你刚刚完成的`neg`函数，补全`negList`函数（大约需要1行代码）。
+**[TASK 3]** 在`ops.cc`中，调用我们给出的`map`函数实现和你刚刚完成的`neg`函数，补全`negList`函数（大约需要1行代码）。
 
 **[TASK 4]** 在`ops.h`中，仿照`map`函数，补全`zipWith`函数（大约需要10行代码）。注意：在进行`zipWith`函数的实现时，你需要考虑输入的两个`std::vector`长度不一致的情况，对于这种情况，你简单地`throw`一个异常即可。
 
-**[TASK 5]** 在`ops.h`中，使用你实现的`zipWith`和`add`函数，实现`addLists`函数（大约需要1行代码）。
+**[TASK 5]** 在`ops.cc`中，使用你实现的`zipWith`和`add`函数，实现`addLists`函数（大约需要1行代码）。
 
 **[TASK 6]** 实际上你会发现`std::accumulate`就能够承担`reduce`函数的功能，因此你可以直接使用`std::accumulate`来实现`reduce`函数。使用`reduce`函数实现`sumList`（将一个列表中的元素相加）和`prodList`（将一个列表中的元素相乘）函数（大约分别需要1行代码）。
