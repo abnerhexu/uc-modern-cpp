@@ -144,9 +144,6 @@ public:
     }
     std::vector<std::shared_ptr<tensor::Tensor>> backward(std::shared_ptr<tensor::Tensor> gradient) override {
         // assertion needed
-        if (gradient->shape[1] != this->objects[1]->data->shape[1]) {
-            throw std::runtime_error("gradient shape does not match bias shape");
-        }
         auto g_bias = std::make_shared<tensor::Tensor>(this->objects[1]->data->shape);
         for (auto i = 0; i < gradient->shape[0]; i++) {
             for (auto j = 0; j < gradient->shape[1]; j++) {
@@ -157,6 +154,9 @@ public:
         //     g_bias->data[j] /= gradient->shape[0];
         // }
         return {gradient, g_bias};
+    }
+    std::vector<float> get_data() {
+        return this->data->data;
     }
 }; // class AddBias
 
@@ -297,8 +297,8 @@ public:
         auto grad_labels = std::make_shared<tensor::Tensor>(labels->shape);
         for (auto i = 0; i < batch_size; i++) {
             for (auto j = 0; j < num_classes; j++) {
-                grad_logits->data[i * num_classes + j] = gradient->data[0] * (expf(log_probs->data[i * num_classes + j]) - labels->data[i * num_classes + j]) / num_classes;
-                grad_labels->data[i * num_classes + j] = gradient->data[0] * (-log_probs->data[i * num_classes + j]) / num_classes;
+                grad_logits->data[i * num_classes + j] = gradient->data[0] * (expf(log_probs->data[i * num_classes + j]) - labels->data[i * num_classes + j]) / batch_size;
+                grad_labels->data[i * num_classes + j] = gradient->data[0] * (-log_probs->data[i * num_classes + j]) / batch_size;
             }
         }
         return {grad_logits, grad_labels};

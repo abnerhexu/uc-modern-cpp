@@ -120,10 +120,10 @@ class DigitClassificationDataset(Dataset):
             test_labels = data["test_labels"]
             assert len(train_images) == len(train_labels) == 60000
             assert len(test_images) == len(test_labels) == 10000
-            self.dev_images = test_images[0::2]
-            self.dev_labels = test_labels[0::2]
-            self.test_images = test_images[1::2]
-            self.test_labels = test_labels[1::2]
+            self.dev_images = np.array(test_images[0::2], copy=True)
+            self.dev_labels = np.array(test_labels[0::2], copy=True)
+            self.test_images = np.array(test_images[1::2], copy=True)
+            self.test_labels = np.array(test_labels[1::2], copy=True)
 
         train_labels_one_hot = np.zeros((len(train_images), 10))
         train_labels_one_hot[range(len(train_images)), train_labels] = 1
@@ -180,13 +180,13 @@ class DigitClassificationDataset(Dataset):
             yield x, y
 
             if use_graphics and time.time() - self.last_update > 1:
-                dev_logits_raw = self.model.run(nn.Constant(self.dev_images)).tensor()
+                dev_logits = self.model.run(nn.Constant(self.dev_images)).tensor()
                 # dev_logits = np.array(dev_logits_raw.data()).reshape(5000, 10)
                 # dev_predicted = np.argmax(dev_logits, axis=1)
-                dev_argmax = nn.argmax(dev_logits_raw, axis=1)
+                dev_argmax = nn.argmax(dev_logits, axis=1)
                 dev_predicted = np.array(dev_argmax.data())
                 # sftmax = np.array(nn.log_softmax(nn.pyarray_to_tensor(dev_logits)).data()).reshape(5000, 10)
-                sftmax = nn.log_softmax(dev_logits_raw)
+                sftmax = nn.log_softmax(dev_logits)
                 dev_probs = np.array(nn.exp(sftmax).data()).reshape(5000, 10)
                 dev_accuracy = np.mean(dev_predicted == self.dev_labels)
 
@@ -218,6 +218,7 @@ class DigitClassificationDataset(Dataset):
                 self.last_update = time.time()
 
     def get_validation_accuracy(self):
+        # print(self.dev_images[:2].tolist())
         dev_logits = self.model.run(nn.Constant(self.dev_images)).tensor()
         dev_predicted = np.array(nn.argmax(dev_logits, axis=1).data())
         dev_accuracy = np.mean(dev_predicted == self.dev_labels)

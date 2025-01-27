@@ -8,7 +8,7 @@ import numpy as np
 
 import nn
 
-use_graphics = True
+use_graphics = False
 
 def maybe_sleep_and_close(seconds):
     if use_graphics and plt.get_fignums():
@@ -267,7 +267,9 @@ class DigitClassificationDataset(Dataset):
                 self.last_update = time.time()
 
     def get_validation_accuracy(self):
+        # print(self.dev_images[:2].tolist())
         dev_logits = self.model.run(nn.Constant(self.dev_images)).data
+        # print(f"dev logits: {dev_logits.flatten()[10:20]}")
         dev_predicted = np.argmax(dev_logits, axis=1)
         dev_accuracy = np.mean(dev_predicted == self.dev_labels)
         return dev_accuracy

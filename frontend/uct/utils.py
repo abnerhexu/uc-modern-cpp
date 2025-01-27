@@ -1,6 +1,6 @@
 import numpy as np
 import uctc.nn as nn
-
+np.random.seed(42)
 def parameter_data(*shape):
     assert len(shape) == 2, (
             "Shape must have 2 dimensions, instead has {}".format(len(shape)))

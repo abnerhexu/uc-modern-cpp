@@ -39,7 +39,8 @@ PYBIND11_MODULE(uctc, m) {
 
     py::class_<nn::AddBias, nn::FunctionNode, std::shared_ptr<nn::AddBias>>(nn, "AddBias")
     .def(py::init<std::shared_ptr<nn::Node>, std::shared_ptr<nn::Node>>(), "Create an add bias function node")
-    .def("forward", &nn::AddBias::forward, "Forward function");
+    .def("forward", &nn::AddBias::forward, "Forward function")
+    .def("data", &nn::AddBias::get_data, "Get the data of the node", pybind11::return_value_policy::automatic_reference);
 
     py::class_<nn::Linear, nn::FunctionNode, std::shared_ptr<nn::Linear>>(nn, "Linear")
     .def(py::init<std::shared_ptr<nn::Node>, std::shared_ptr<nn::Node>>(), "Create a linear function node")

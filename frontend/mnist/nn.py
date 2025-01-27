@@ -1,5 +1,5 @@
 import numpy as np
-
+np.random.seed(42)
 def format_shape(shape):
     return "x".join(map(str, shape)) if shape else "()"
 
