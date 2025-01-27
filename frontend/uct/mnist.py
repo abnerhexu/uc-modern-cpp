@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import uctc.nn as nn 
 from utils import parameter_data, Dataset
 
-use_graphics = False
+use_graphics = True
 
 class DigitClassificationModel(object):
     """

@@ -8,7 +8,7 @@ import numpy as np
 
 import nn
 
-use_graphics = False
+use_graphics = True
 
 def maybe_sleep_and_close(seconds):
     if use_graphics and plt.get_fignums():
