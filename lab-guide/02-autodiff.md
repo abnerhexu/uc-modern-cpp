@@ -25,5 +25,11 @@ x = 5.0
 
 **[TASK 7]** 补全`operators/autodiff.h`中的`central_difference`函数，实现数值微分，求出$f(x_1, x_2, ..., x_n)$在第$arg$个参数处的导数值。
 
+
 #### 高等数学中的导数
 
+还记得$z = x + y$，对$x$和$y$分别求导的结果是什么吗？显然，根据多元函数的求导法则，有$\frac{\partial z}{\partial x}=1$，以及$\frac{\partial z}{\partial y}=1$。如果我们再考虑梯度，那么$z$的梯度就是$\nabla z = (1, 1)$。那么，对于更复杂的函数，比如$f(x, y) = x^2 + y^2$，其梯度$\nabla f$又是什么呢？
+
+**[TASK 8]** 补全`operators/autodiff.h`中的`Add`类，能够对表达式$z = x + y$求导。
+
+**[TASK 9]** 仿照`Add`类构造`operators/autodiff.h`中的`Mul`类，能够对表达式$z = x \cdot y$求导。
